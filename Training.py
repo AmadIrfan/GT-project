@@ -6,26 +6,29 @@ import seaborn as sns
 from sklearn.metrics import accuracy_score, f1_score, jaccard_score, confusion_matrix
 
 # Read data from CSV files
-science_df = pd.read_csv("train_science_data_preprocessed.csv")
-sports_df = pd.read_csv("train_sports_data_preprocessed.csv")
-#travel_df = pd.read_csv("train_travel_data.csv")
+sport = pd.read_csv("Sports.csv", delimiter=";", encoding="latin1")
+health_fitness = pd.read_csv("health_fitness.csv", delimiter=";", encoding="latin1")
+travel = pd.read_csv("Travel.csv", delimiter=";", encoding="latin1")
 
-# Concatenate all dataframes
-all_data = pd.concat([science_df, sports_df], ignore_index=True)
+
+# Concatenate all data frames
+all_data = pd.concat([health_fitness, sport, travel], ignore_index=True)
+
 
 # Preprocessing function
 def preprocess(text):
-    # Check if text is not NaN
     if isinstance(text, str):
         # Tokenization
-        tokens = re.findall(r'\b\w+\b', text.lower())
+        tokens = re.findall(r"\b\w+\b", text.lower())
         # Stop-word removal and stemming can be added here if needed
         return " ".join(tokens)
     else:
         return "doctor"
 
+
 # Preprocess text data
-all_data['text'] = all_data['text'].apply(preprocess)
+all_data["text"] = all_data["text"].apply(preprocess)
+
 
 # Make a Directed Graph according to the paper
 def make_graph(string):
@@ -38,10 +41,11 @@ def make_graph(string):
         G.add_node(chunk)
     # Add edges between adjacent words
     for i in range(len(chunks) - 1):
-        G.add_edge(chunks[i], chunks[i + 1])        
-    #nx.draw(G, with_labels=True)
-    #plt.show()
+        G.add_edge(chunks[i], chunks[i + 1])
+    # nx.draw(G, with_labels=True)
+    # plt.show()
     return G
+
 
 # Calculate graph distance
 def graph_distance(graph1, graph2):
@@ -51,42 +55,54 @@ def graph_distance(graph1, graph2):
     mcs_graph = nx.Graph(list(common))
     return -len(mcs_graph.edges())
 
+
 class GraphKNN:
-    def __init__(self, k:int):
+    def __init__(self, k: int):
         self.k = k
         self.train_graphs = []
         self.train_labels = []
-    
+
     def fit(self, train_graphs, train_labels):
         self.train_graphs = train_graphs
         self.train_labels = train_labels
-    
+
     def predict(self, graph):
         distances = []
         for train_graph in self.train_graphs:
             distance = graph_distance(graph, train_graph)
             distances.append(distance)
-        nearest_indices = sorted(range(len(distances)), key=lambda i: distances[i])[:self.k]
+        nearest_indices = sorted(range(len(distances)), key=lambda i: distances[i])[
+            : self.k
+        ]
         nearest_labels = [self.train_labels[i] for i in nearest_indices]
         prediction = max(set(nearest_labels), key=nearest_labels.count)
-        #print("Prediction:", prediction)
+        # print("Prediction:", prediction)
         return prediction
+
 
 # Plot confusion matrix
 def plot_confusion_matrix(true_labels, predicted_labels, classes):
     cm = confusion_matrix(true_labels, predicted_labels, labels=classes)
     plt.figure(figsize=(8, 6))
     sns.set(font_scale=1.2)
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False,
-                xticklabels=classes, yticklabels=classes)
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.title('Confusion Matrix')
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        cbar=False,
+        xticklabels=classes,
+        yticklabels=classes,
+    )
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title("Confusion Matrix")
     plt.show()
 
+
 # Prepare training data
-train_texts = all_data['text'].tolist()
-train_labels = all_data['label'].tolist()
+train_texts = all_data["text"].tolist()
+train_labels = all_data["label"].tolist()
 train_graphs = [make_graph(text) for text in train_texts]
 
 # Train the model
@@ -94,15 +110,18 @@ graph_classifier = GraphKNN(k=2)
 graph_classifier.fit(train_graphs, train_labels)
 
 # Test data
-test_texts = ["engineering science technology research", 
-              "athletics activities fitness games"]
+test_texts = [
+    "Travel often seen as an escape from the mundane",
+    "Cricket is the most popular sport in Pakistan",
+    "How much exercise do I need? How much exercise",
+]
 test_graphs = [make_graph(text) for text in test_texts]
 
 # Predict
 predictions = [graph_classifier.predict(graph) for graph in test_graphs]
 
 # Evaluate
-test_labels = ["science and education", "sports"]
+test_labels = ["Travel", "Sports", "Health & Fitness"]
 # Calculate accuracy
 accuracy = accuracy_score(test_labels, predictions)
 # Calculate accuracy
@@ -111,26 +130,33 @@ print("Accuracy: {:.2f}%".format(accuracy_percentage))
 
 # Calculate F1 Score for the second class
 f1_scores = f1_score(test_labels, predictions, average=None)
-#print("F1 Scores:", f1_scores)
+# print("F1 Scores:", f1_scores)
 f1_score_percentage = f1_scores[0] * 100
 print("F1 Score:", "{:.2f}%".format(f1_score_percentage))
 
 # Calculate Jaccard similarity for the second class
 jaccard = jaccard_score(test_labels, predictions, average=None)
-#print("jaccard:",jaccard)
+# print("jaccard:",jaccard)
 jaccard_percentage = jaccard[0] * 100
 print("Jaccard Similarity:", "{:.2f}%".format(jaccard_percentage))
 
 
 # Plot confusion matrix
-conf_matrix = confusion_matrix(list(test_labels), list(predictions), labels=list(set(test_labels)))
+conf_matrix = confusion_matrix(
+    list(test_labels), list(predictions), labels=list(set(test_labels))
+)
 
 plt.figure(figsize=(8, 6))
 sns.set(font_scale=1.2)
-sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=set(test_labels), yticklabels=set(test_labels))
-plt.xlabel('Predicted labels')
-plt.ylabel('True labels')
-plt.title('Confusion Matrix')
+sns.heatmap(
+    conf_matrix,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=set(test_labels),
+    yticklabels=set(test_labels),
+)
+plt.xlabel("Predicted labels")
+plt.ylabel("True labels")
+plt.title("Confusion Matrix")
 plt.show()
-
-

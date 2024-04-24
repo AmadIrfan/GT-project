@@ -1,9 +1,6 @@
 import pandas as pd
 
 df = pd.read_csv("output.csv", delimiter=";", encoding="latin1")
-# print(df)  # Print the DataFrame
-# print(df.head())  # Print the first few rows of the DataFrame
-# print(df.info()) # Display information about the DataFrame
 category = df["category"].to_list()
 content = df["content"].to_list()
 
